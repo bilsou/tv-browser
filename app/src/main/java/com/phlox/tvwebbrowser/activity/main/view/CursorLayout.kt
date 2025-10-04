@@ -71,7 +71,7 @@ class CursorLayout : FrameLayout {
         val displaySize = Point()
         display.getSize(displaySize)
         cursorStrokeWidth = (displaySize.x / 400).toFloat()
-        cursorRadius = displaySize.x / 110
+        cursorRadius = displaySize.x / 50
         cursorRadiusPressed = cursorRadius + Utils.D2P(context, 5f).toInt()
         maxCursorSpeed = (displaySize.x / 25).toFloat()
         scrollStartPadding = displaySize.x / 15
@@ -230,13 +230,40 @@ class CursorLayout : FrameLayout {
     }
 
     private fun handleDirectionKeyEvent(event: KeyEvent, x: Int, y: Int, keyDown: Boolean) {
-        lastCursorUpdate = System.currentTimeMillis()
+        // If cursor is invisible and it's a key down event, scroll WebView directly
+        if (isCursorDissappear && keyDown) {
+            val child = getChildAt(0)
+            if (child != null && child is WebViewEx) {
+                val scrollAmount = 100 // Adjust this value to control scroll speed
+                var scrollX = 0
+                var scrollY = 0
+                
+                if (x != UNCHANGED) {
+                    scrollX = x * scrollAmount
+                }
+                if (y != UNCHANGED) {
+                    scrollY = y * scrollAmount
+                }
+                
+                scrollWebViewBy(child, scrollX, scrollY)
+            }
+            return
+        }
+        
+        // If cursor is invisible, don't update lastCursorUpdate to keep it invisible
+        if (!isCursorDissappear) {
+            lastCursorUpdate = System.currentTimeMillis()
+        }
+        
         if (keyDown) {
             if (keyDispatcherState.isTracking(event)) {
                 return
             }
-            removeCallbacks(cursorUpdateRunnable)
-            post(cursorUpdateRunnable)
+            // Only start cursor movement if cursor is visible
+            if (!isCursorDissappear) {
+                removeCallbacks(cursorUpdateRunnable)
+                post(cursorUpdateRunnable)
+            }
             keyDispatcherState.startTracking(event, this)
         } else {
             keyDispatcherState.handleUpEvent(event)
@@ -247,7 +274,10 @@ class CursorLayout : FrameLayout {
             }
         }
 
-        cursorDirection.set(if (x == UNCHANGED) cursorDirection.x else x, if (y == UNCHANGED) cursorDirection.y else y)
+        // Only update cursor direction if cursor is visible
+        if (!isCursorDissappear) {
+            cursorDirection.set(if (x == UNCHANGED) cursorDirection.x else x, if (y == UNCHANGED) cursorDirection.y else y)
+        }
     }
 
     private fun scrollWebViewBy(wv: WebViewEx, scrollX: Int, scrollY: Int) {
@@ -353,7 +383,7 @@ class CursorLayout : FrameLayout {
             val dTime = newTime - lastCursorUpdate
             lastCursorUpdate = newTime
 
-            val accelerationFactor = 0.05f * dTime
+            val accelerationFactor = 800f * dTime
             //float decelerationFactor = 1 - Math.min(0.5f, 0.005f * dTime);
             cursorSpeed.set(bound(cursorSpeed.x/* * decelerationFactor*/ + bound(cursorDirection.x.toFloat(), 1f) * accelerationFactor, maxCursorSpeed),
                     bound(cursorSpeed.y/* * decelerationFactor*/ + bound(cursorDirection.y.toFloat(), 1f) * accelerationFactor, maxCursorSpeed))
@@ -385,22 +415,23 @@ class CursorLayout : FrameLayout {
 
             var dx = 0
             var dy = 0
+            val delta = 1
             if (cursorPosition.y > height - scrollStartPadding) {
                 if (cursorSpeed.y > 0) {
-                    dy = cursorSpeed.y.toInt()
+                    dy = (cursorSpeed.y * delta).toInt()
                 }
             } else if (cursorPosition.y < scrollStartPadding) {
                 if (cursorSpeed.y < 0) {
-                    dy = cursorSpeed.y.toInt()
+                    dy = (cursorSpeed.y * delta).toInt()
                 }
             }
             if (cursorPosition.x > width - scrollStartPadding) {
                 if (cursorSpeed.x > 0) {
-                    dx = cursorSpeed.x.toInt()
+                    dx = (cursorSpeed.x * delta).toInt()
                 }
             } else if (cursorPosition.x < scrollStartPadding) {
                 if (cursorSpeed.x < 0) {
-                    dx = cursorSpeed.x.toInt()
+                    dx = (cursorSpeed.x * delta).toInt()
                 }
             }
             if (dx != 0 || dy != 0) {
