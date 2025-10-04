@@ -19,6 +19,7 @@ import android.view.animation.AccelerateInterpolator
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.DecelerateInterpolator
+import android.view.inputmethod.InputMethodManager
 import android.webkit.*
 import android.widget.FrameLayout
 import android.widget.PopupMenu
@@ -132,8 +133,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
 
         vb.vTabs.listener = tabsListener
 
-        vb.ibAdBlock.setOnClickListener { toggleAdBlockForTab() }
-        vb.ibPopupBlock.setOnClickListener { lifecycleScope.launch(Dispatchers.Main) { showPopupBlockOptions() } }
         vb.ibHome.setOnClickListener { navigate(settingsModel.homePage) }
         vb.ibBack.setOnClickListener { navigateBack() }
         vb.ibForward.setOnClickListener {
@@ -145,42 +144,13 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         vb.ibRefresh.setOnClickListener { refresh() }
         vb.ibCloseTab.setOnClickListener { tabsModel.currentTab.value?.apply { closeTab(this) } }
 
-        vb.vActionBar.callback = this
+        // Add button click listener for the new Tab button
+        vb.btnTab.setOnClickListener { addTab() }
 
-        vb.ibZoomIn.setOnClickListener {
-            val tab = tabsModel.currentTab.value ?: return@setOnClickListener
-            tab.webEngine.apply {
-                if (this.canZoomIn()) {
-                    tab.changingScale = true
-                    this.zoomIn()
-                }
-                onWebViewUpdated(tab)
-                if (config.isWebEngineGecko()) {
-                    uiHandler.postDelayed({
-                        vb.ibZoomIn.requestFocus()
-                    }, 150)
-                } else if (!this.canZoomIn()) {
-                    vb.ibZoomOut.requestFocus()
-                }
-            }
-        }
-        vb.ibZoomOut.setOnClickListener {
-            val tab = tabsModel.currentTab.value ?: return@setOnClickListener
-            tab.webEngine.apply {
-                if (this.canZoomOut()) {
-                    tab.changingScale = true
-                    this.zoomOut()
-                }
-                onWebViewUpdated(tab)
-                if (config.isWebEngineGecko()) {
-                    uiHandler.postDelayed({
-                        vb.ibZoomOut.requestFocus()
-                    }, 150)
-                } else if (!this.canZoomOut()) {
-                    vb.ibZoomIn.requestFocus()
-                }
-            }
-        }
+        // Add address bar functionality
+        setupAddressBar()
+
+        vb.vActionBar.callback = this
 
         vb.llBottomPanel.childs.forEach {
             it.setOnTouchListener(bottomButtonsOnTouchListener)
@@ -420,16 +390,12 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
     private fun loadState() = lifecycleScope.launch(Dispatchers.Main) {
         WebEngineFactory.initialize(this@MainActivity, vb.flWebViewContainer)
 
-        vb.progressBarGeneric.visibility = View.VISIBLE
-        vb.progressBarGeneric.requestFocus()
         viewModel.loadState().join()
         tabsModel.loadState().join()
 
         if (!running) {
             return@launch
         }
-
-        vb.progressBarGeneric.visibility = View.GONE
 
         val intentUri = intent.data
         if (intentUri == null) {
@@ -560,19 +526,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
     private fun onWebViewUpdated(tab: WebTabState) {
         vb.ibBack.isEnabled = tab.webEngine.canGoBack() == true
         vb.ibForward.isEnabled = tab.webEngine.canGoForward() == true
-        val zoomPossible = tab.webEngine.canZoomIn() || tab.webEngine.canZoomOut()
-        vb.ibZoomIn.visibility = if (zoomPossible) View.VISIBLE else View.GONE
-        vb.ibZoomOut.visibility = if (zoomPossible) View.VISIBLE else View.GONE
-        vb.ibZoomIn.isEnabled = tab.webEngine.canZoomIn() == true
-        vb.ibZoomOut.isEnabled = tab.webEngine.canZoomOut() == true
-
-        val adblockEnabled = tab.adblock ?: config.adBlockEnabled
-        vb.ibAdBlock.setImageResource(if (adblockEnabled) R.drawable.ic_adblock_on else R.drawable.ic_adblock_off)
-        vb.tvBlockedAdCounter.visibility = if (adblockEnabled && tab.blockedAds != 0) View.VISIBLE else View.GONE
-        vb.tvBlockedAdCounter.text = tab.blockedAds.toString()
-
-        vb.tvBlockedPopupCounter.visibility = if (tab.blockedPopups != 0) View.VISIBLE else View.GONE
-        vb.tvBlockedPopupCounter.text = tab.blockedPopups.toString()
     }
 
     private fun onDownloadRequested(url: String, referer: String, originalDownloadFileName: String, userAgent: String?, mimeType: String? = null,
@@ -763,7 +716,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
     private fun toggleIncognitoMode(andSwitchProcess: Boolean) = lifecycleScope.launch(Dispatchers.Main) {
         Log.d(TAG, "toggleIncognitoMode andSwitchProcess: $andSwitchProcess")
         val becomingIncognitoMode = !config.incognitoMode
-        vb.progressBarGeneric.visibility = View.VISIBLE
         if (!becomingIncognitoMode) {
             if (!config.isWebEngineGecko()) {
                 withContext(Dispatchers.IO) {
@@ -782,7 +734,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
                 viewModel.clearIncognitoData().join()
             }
         }
-        vb.progressBarGeneric.visibility = View.GONE
         config.incognitoMode = becomingIncognitoMode
         if (andSwitchProcess) {
             switchProcess(becomingIncognitoMode)
@@ -1010,6 +961,85 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         })
     }
 
+    private fun setupAddressBar() {
+        // Address bar focus listener
+        vb.etUrl.onFocusChangeListener = View.OnFocusChangeListener { _, focused ->
+            if (focused) {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(vb.etUrl, InputMethodManager.SHOW_IMPLICIT)
+                uiHandler.postDelayed({
+                    vb.etUrl.selectAll()
+                }, 500)
+            }
+        }
+
+        // Address bar key listener for Enter key
+        vb.etUrl.setOnKeyListener { _, keyCode, keyEvent ->
+            when (keyEvent.keyCode) {
+                KeyEvent.KEYCODE_ENTER -> {
+                    if (keyEvent.action == KeyEvent.ACTION_UP) {
+                        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.hideSoftInputFromWindow(vb.etUrl.windowToken, 0)
+                        search(vb.etUrl.text.toString())
+                        hideMenuOverlay()
+                        // Clear focus from address bar
+                        vb.etUrl.clearFocus()
+                    }
+                    return@setOnKeyListener true
+                }
+                KeyEvent.KEYCODE_BACK -> {
+                    if (keyEvent.action == KeyEvent.ACTION_UP) {
+                        vb.etUrl.clearFocus()
+                        hideMenuOverlay()
+                    }
+                    return@setOnKeyListener true
+                }
+            }
+            false
+        }
+        
+        // Also add EditorActionListener for IME action
+        vb.etUrl.setOnEditorActionListener { _, actionId, keyEvent ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH || 
+                actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO ||
+                actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
+                (keyEvent != null && keyEvent.keyCode == KeyEvent.KEYCODE_ENTER && keyEvent.action == KeyEvent.ACTION_DOWN)) {
+                
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(vb.etUrl.windowToken, 0)
+                search(vb.etUrl.text.toString())
+                hideMenuOverlay()
+                vb.etUrl.clearFocus()
+                return@setOnEditorActionListener true
+            }
+            false
+        }
+
+        // Subscribe to current tab changes to update address bar
+        tabsModel.currentTab.subscribe(this) { tab ->
+            setAddressBoxText(tab?.url ?: "")
+        }
+    }
+
+    fun setAddressBoxText(text: String) {
+        if (text == Config.HOME_PAGE_URL) {
+            vb.etUrl.setText("")
+        } else {
+            vb.etUrl.setText(text)
+        }
+    }
+
+    fun setAddressBoxTextColor(color: Int) {
+        vb.etUrl.setTextColor(color)
+    }
+
+    fun addTab() {
+        openInNewTab(settingsModel.homePage, tabsModel.tabsStates.size,
+            needToHideMenuOverlay = true,
+            navigateImmediately = true
+        )
+    }
+
     private fun onEditHomePageBookmark(favoriteItem: FavoriteItem) {
         FavoriteEditorDialog(this, object : FavoriteEditorDialog.Callback {
             override fun onDone(item: FavoriteItem) {
@@ -1219,15 +1249,11 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
             Log.i(TAG, "onBlockedAd: $uri")
             if (!config.adBlockEnabled) return
             tab.blockedAds++
-            vb.tvBlockedAdCounter.visibility = if (tab.blockedAds > 0) View.VISIBLE else View.GONE
-            vb.tvBlockedAdCounter.text = tab.blockedAds.toString()
         }
 
         override fun onBlockedDialog(newTab: Boolean) {
             tab.blockedPopups++
             runOnUiThread {
-                vb.tvBlockedPopupCounter.visibility = if (tab.blockedPopups > 0) View.VISIBLE else View.GONE
-                vb.tvBlockedPopupCounter.text = tab.blockedPopups.toString()
                 val msg = getString(if (newTab) R.string.new_tab_blocked else R.string.popup_dialog_blocked)
                 NotificationView.showBottomRight(vb.rlRoot, R.drawable.ic_block_popups, msg)
             }
