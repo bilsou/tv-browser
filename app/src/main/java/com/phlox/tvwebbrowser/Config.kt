@@ -45,8 +45,7 @@ class Config(val prefs: SharedPreferences) {
             "https://search.yahoo.com/search?p=[query]", "https://duckduckgo.com/?q=[query]",
             "https://yandex.com/search/?text=[query]", "https://www.startpage.com/sp/search?query=[query]", "")
         val SupportedWebEngines = arrayOf(ENGINE_GECKO_VIEW, ENGINE_WEB_VIEW)
-        const val HOME_PAGE_URL = "https://tvbro.phlox.dev/appcontent/home/"
-        //const val HOME_PAGE_URL = "http://10.0.2.2:5000/appcontent/home/"
+        const val HOME_PAGE_URL = "about:blank"
 
         fun canRecommendGeckoView(): Boolean {
             var recommendedGeckoView = false

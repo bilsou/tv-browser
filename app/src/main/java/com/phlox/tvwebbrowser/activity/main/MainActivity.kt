@@ -78,6 +78,7 @@ open class MainActivity : AppCompatActivity() {
         private const val MY_PERMISSIONS_REQUEST_VOICE_SEARCH_PERMISSIONS = 10008
         private const val COMMON_REQUESTS_START_CODE = 10100
         private const val REQUEST_CODE_TABS_ACTIVITY = 10009
+        private const val REQUEST_CODE_HOMEPAGE_ACTIVITY = 10010
     }
 
     private lateinit var vb: ActivityMainBinding
@@ -132,7 +133,9 @@ open class MainActivity : AppCompatActivity() {
 
         vb.vTabs.listener = tabsListener
 
-        vb.ibHome.setOnClickListener { navigate(settingsModel.homePage) }
+        vb.ibHome.setOnClickListener { 
+            navigate(settingsModel.homePage)
+        }
         vb.ibBack.setOnClickListener { navigateBack() }
         vb.ibForward.setOnClickListener {
             val tab = tabsModel.currentTab.value ?: return@setOnClickListener
@@ -665,6 +668,12 @@ open class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            REQUEST_CODE_HOMEPAGE_ACTIVITY -> if (resultCode == Activity.RESULT_OK) {
+                val selectedUrl = data?.getStringExtra(com.phlox.tvwebbrowser.activity.homepage.HomePageActivity.EXTRA_SELECTED_URL)
+                if (selectedUrl != null) {
+                    navigate(selectedUrl)
+                }
+            }
 
             else -> super.onActivityResult(requestCode, resultCode, data)
         }
@@ -1096,6 +1105,11 @@ open class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, REQUEST_CODE_TABS_ACTIVITY)
     }
 
+    fun showHomePageActivity() {
+        val intent = Intent(this, com.phlox.tvwebbrowser.activity.homepage.HomePageActivity::class.java)
+        startActivityForResult(intent, REQUEST_CODE_HOMEPAGE_ACTIVITY)
+    }
+
     fun addTab() {
         openInNewTab(settingsModel.homePage, tabsModel.tabsStates.size,
             needToHideMenuOverlay = true,
@@ -1274,6 +1288,11 @@ open class MainActivity : AppCompatActivity() {
             if (tabByTitleIndex(vb.vTabs.current) == tab) {
                 setAddressBoxText(tab.url)
             }
+            
+            // Show homepage activity if we're on about:blank
+            if (shouldShowHomePage(tab.url)) {
+                showHomePageActivity()
+            }
 
             //thumbnail
             tabsModel.tabsStates.onEach { if (it != tab) it.thumbnail = null }
@@ -1286,6 +1305,10 @@ open class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+          
+        private fun shouldShowHomePage(url: String): Boolean {
+            return url == "about:blank" || url == Config.HOME_PAGE_URL
         }
 
         override fun onPageCertificateError(url: String?) {

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/button_bg_selector"
+    android:clickable="true"
+    android:focusable="true"
+    android:minHeight="80dp"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/ivTabIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="16dp"
+        android:contentDescription="Tab Icon"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_home_grey_900_24dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <TextView
+        android:id="@+id/tvTabTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/tvCurrentIndicator"
+        app:layout_constraintStart_toEndOf="@+id/ivTabIcon"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Example Website Title" />
+
+    <TextView
+        android:id="@+id/tvTabUrl"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/default_url_color"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toStartOf="@+id/tvCurrentIndicator"
+        app:layout_constraintStart_toEndOf="@+id/ivTabIcon"
+        app:layout_constraintTop_toBottomOf="@+id/tvTabTitle"
+        tools:text="https://example.com" />
+
+    <TextView
+        android:id="@+id/tvCurrentIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/gray_badge_bg"
+        android:paddingLeft="8dp"
+        android:paddingTop="4dp"
+        android:paddingRight="8dp"
+        android:paddingBottom="4dp"
+        android:text="CURRENT"
+        android:textColor="@android:color/white"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
