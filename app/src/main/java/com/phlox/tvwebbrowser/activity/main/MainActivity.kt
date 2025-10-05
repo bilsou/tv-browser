@@ -39,7 +39,7 @@ import com.phlox.tvwebbrowser.activity.history.HistoryActivity
 import com.phlox.tvwebbrowser.activity.main.dialogs.favorites.FavoriteEditorDialog
 import com.phlox.tvwebbrowser.activity.main.dialogs.favorites.FavoritesDialog
 import com.phlox.tvwebbrowser.activity.main.dialogs.settings.SettingsDialog
-import com.phlox.tvwebbrowser.activity.main.view.ActionBar
+
 import com.phlox.tvwebbrowser.activity.main.view.tabs.TabsAdapter.Listener
 import com.phlox.tvwebbrowser.databinding.ActivityMainBinding
 import com.phlox.tvwebbrowser.model.*
@@ -65,7 +65,7 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.system.exitProcess
 
 
-open class MainActivity : AppCompatActivity(), ActionBar.Callback {
+open class MainActivity : AppCompatActivity() {
     companion object {
         private val TAG = MainActivity::class.java.simpleName
         const val VOICE_SEARCH_REQUEST_CODE = 10001
@@ -77,6 +77,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         const val KEY_PROCESS_ID_TO_KILL = "proc_id_to_kill"
         private const val MY_PERMISSIONS_REQUEST_VOICE_SEARCH_PERMISSIONS = 10008
         private const val COMMON_REQUESTS_START_CODE = 10100
+        private const val REQUEST_CODE_TABS_ACTIVITY = 10009
     }
 
     private lateinit var vb: ActivityMainBinding
@@ -105,8 +106,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         Log.d(TAG, "onCreate incognitoMode: $incognitoMode")
         if (incognitoMode xor (this is IncognitoModeMainActivity)) {
             switchProcess(incognitoMode, intent?.extras)
-            finish()
-            return
         }
         val pidToKill = intent?.getIntExtra(KEY_PROCESS_ID_TO_KILL, -1) ?: -1
         if (pidToKill != -1) {
@@ -145,18 +144,35 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         vb.ibCloseTab.setOnClickListener { tabsModel.currentTab.value?.apply { closeTab(this) } }
 
         // Add button click listener for the new Tab button
-        vb.btnTab.setOnClickListener { addTab() }
+        vb.btnTab.setOnClickListener { showTabsActivity() }
 
         // Add address bar functionality
         setupAddressBar()
 
-        vb.vActionBar.callback = this
-
-        vb.llBottomPanel.childs.forEach {
-            it.setOnTouchListener(bottomButtonsOnTouchListener)
-            it.onFocusChangeListener = bottomButtonsFocusListener
-            it.setOnKeyListener(bottomButtonsKeyListener)
-        }
+        // Set up focus listeners for bottom panel buttons
+        vb.ibBack.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.ibBack.onFocusChangeListener = bottomButtonsFocusListener
+        vb.ibBack.setOnKeyListener(bottomButtonsKeyListener)
+        
+        vb.ibForward.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.ibForward.onFocusChangeListener = bottomButtonsFocusListener
+        vb.ibForward.setOnKeyListener(bottomButtonsKeyListener)
+        
+        vb.ibRefresh.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.ibRefresh.onFocusChangeListener = bottomButtonsFocusListener
+        vb.ibRefresh.setOnKeyListener(bottomButtonsKeyListener)
+        
+        vb.etUrl.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.etUrl.onFocusChangeListener = bottomButtonsFocusListener
+        vb.etUrl.setOnKeyListener(bottomButtonsKeyListener)
+        
+        vb.ibHome.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.ibHome.onFocusChangeListener = bottomButtonsFocusListener
+        vb.ibHome.setOnKeyListener(bottomButtonsKeyListener)
+        
+        vb.btnTab.setOnTouchListener(bottomButtonsOnTouchListener)
+        vb.btnTab.onFocusChangeListener = bottomButtonsFocusListener
+        vb.btnTab.setOnKeyListener(bottomButtonsKeyListener)
 
         config.userAgentString.subscribe(this.lifecycle, false) {
             for (tab in tabsModel.tabsStates) {
@@ -190,7 +206,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
 
         tabsModel.currentTab.subscribe(this) {
-            vb.vActionBar.setAddressBoxText(it?.url ?: "")
+            setAddressBoxText(it?.url ?: "")
             it?.let {
                 onWebViewUpdated(it)
             }
@@ -242,7 +258,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         override fun onTitleChanged(index: Int) {
             Log.d(TAG, "onTitleChanged: $index")
             val tab = tabByTitleIndex(index)
-            vb.vActionBar.setAddressBoxText(tab?.url ?: "")
+            setAddressBoxText(tab?.url ?: "")
             uiHandler.removeCallbacks(displayThumbnailRunnable)
             displayThumbnailRunnable.tabState = tab
             uiHandler.postDelayed(displayThumbnailRunnable, 200)
@@ -267,7 +283,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
     }
 
-    override fun closeWindow() {
+    fun closeWindow() {
         Log.d(TAG, "closeWindow")
         lifecycleScope.launch {
             if (config.incognitoMode) {
@@ -277,18 +293,18 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
     }
 
-    override fun showDownloads() {
+    fun showDownloads() {
         startActivity(Intent(this@MainActivity, DownloadsActivity::class.java))
     }
 
-    override fun showHistory() {
+    fun showHistory() {
         startActivityForResult(
                 Intent(this@MainActivity, HistoryActivity::class.java),
                 REQUEST_CODE_HISTORY_ACTIVITY)
         hideMenuOverlay()
     }
 
-    override fun showFavorites() {
+    fun showFavorites() {
         val currentTab = tabsModel.currentTab.value
         val currentPageTitle = currentTab?.title ?: ""
         val currentPageUrl = currentTab?.url ?: ""
@@ -330,6 +346,39 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
                 }
                 return@OnKeyListener true
             }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (keyEvent.action == KeyEvent.ACTION_DOWN) {
+                    // Handle focus navigation when buttons are disabled
+                    when (view.id) {
+                        vb.ibBack.id -> {
+                            if (!vb.ibForward.isEnabled) {
+                                // Skip disabled forward button and go to refresh
+                                vb.ibRefresh.requestFocus()
+                                return@OnKeyListener true
+                            }
+                        }
+                        vb.ibForward.id -> {
+                            // Always go to refresh button
+                            vb.ibRefresh.requestFocus()
+                            return@OnKeyListener true
+                        }
+                    }
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (keyEvent.action == KeyEvent.ACTION_DOWN) {
+                    // Handle focus navigation when buttons are disabled
+                    when (view.id) {
+                        vb.ibForward.id -> {
+                            if (!vb.ibBack.isEnabled) {
+                                // Skip disabled back button and go to tab button (wrap around)
+                                vb.btnTab.requestFocus()
+                                return@OnKeyListener true
+                            }
+                        }
+                    }
+                }
+            }
         }
         false
     }
@@ -337,17 +386,11 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
     private fun tabByTitleIndex(index: Int) =
             if (index >= 0 && index < tabsModel.tabsStates.size) tabsModel.tabsStates[index] else null
 
-    override fun showSettings() {
+    fun showSettings() {
         SettingsDialog(this, settingsModel).show()
     }
 
-    override fun onExtendedAddressBarMode() {
-        vb.llBottomPanel.visibility = View.INVISIBLE
-    }
 
-    override fun onUrlInputDone() {
-        hideMenuOverlay()
-    }
 
     fun navigateBack(goHomeIfNoHistory: Boolean = false) {
         val currentTab = tabsModel.currentTab.value
@@ -609,6 +652,19 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
             REQUEST_CODE_UNKNOWN_APP_SOURCES -> if (autoUpdateModel.needToShowUpdateDlgAgain) {
                 autoUpdateModel.showUpdateDialogIfNeeded(this)
             }
+            REQUEST_CODE_TABS_ACTIVITY -> if (resultCode == Activity.RESULT_OK) {
+                val addNewTab = data?.getBooleanExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_ADD_NEW_TAB, false) ?: false
+                if (addNewTab) {
+                    // Add new tab
+                    addTab()
+                } else {
+                    val selectedTabIndex = data?.getIntExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_SELECTED_TAB_INDEX, -1) ?: -1
+                    if (selectedTabIndex >= 0 && selectedTabIndex < tabsModel.tabsStates.size) {
+                        val selectedTab = tabsModel.tabsStates[selectedTabIndex]
+                        changeTab(selectedTab)
+                    }
+                }
+            }
 
             else -> super.onActivityResult(requestCode, resultCode, data)
         }
@@ -676,7 +732,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
     }
 
     fun navigate(url: String) {
-        vb.vActionBar.setAddressBoxTextColor(ContextCompat.getColor(this@MainActivity, R.color.default_url_color))
+        setAddressBoxTextColor(ContextCompat.getColor(this@MainActivity, R.color.default_url_color))
         val tab = tabsModel.currentTab.value
         if (tab != null) {
             tab.url = url
@@ -686,7 +742,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
     }
 
-    override fun search(aText: String) {
+    fun search(aText: String) {
         var text = aText
         val trimmedLowercased = text.trim { it <= ' ' }.lowercase(Locale.ROOT)
         if (Patterns.WEB_URL.matcher(text).matches() || trimmedLowercased.startsWith("http://") || trimmedLowercased.startsWith("https://")) {
@@ -709,7 +765,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
     }
 
-    override fun toggleIncognitoMode() {
+    fun toggleIncognitoMode() {
         toggleIncognitoMode(true)
     }
 
@@ -822,11 +878,11 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
                 .translationY(0f)
                 .alpha(1f)
                 .withEndAction {
-                    vb.vActionBar.catchFocus()
+                    vb.vTabs.requestFocus()
                 }
                 .start()
 
-        vb.vActionBar.dismissExtendedAddressBarMode()
+
 
         vb.rlActionBar.visibility = View.VISIBLE
         vb.rlActionBar.translationY = -vb.rlActionBar.height.toFloat()
@@ -947,19 +1003,6 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         showMenuOverlay()
     }
 
-    override fun initiateVoiceSearch() {
-        hideMenuOverlay()
-        voiceSearchHelper.initiateVoiceSearch(object : VoiceSearchHelper.Callback {
-            override fun onResult(text: String?) {
-                if (text == null) {
-                    Utils.showToast(this@MainActivity, getString(R.string.can_not_recognize))
-                    return
-                }
-                search(text)
-                hideMenuOverlay()
-            }
-        })
-    }
 
     private fun setupAddressBar() {
         // Address bar focus listener
@@ -1031,6 +1074,26 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
 
     fun setAddressBoxTextColor(color: Int) {
         vb.etUrl.setTextColor(color)
+    }
+
+
+
+    fun showTabsActivity() {
+        val currentTabIndex = tabsModel.tabsStates.indexOf(tabsModel.currentTab.value)
+        val tabInfoList = ArrayList(tabsModel.tabsStates.map { tabState ->
+            com.phlox.tvwebbrowser.activity.tabs.TabInfo(
+                id = tabState.id,
+                title = tabState.title,
+                url = tabState.url,
+                faviconHash = tabState.faviconHash
+            )
+        })
+        
+        val intent = Intent(this, com.phlox.tvwebbrowser.activity.tabs.TabsActivity::class.java).apply {
+            putExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_CURRENT_TAB_INDEX, currentTabIndex)
+            putParcelableArrayListExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_TAB_STATES, tabInfoList)
+        }
+        startActivityForResult(intent, REQUEST_CODE_TABS_ACTIVITY)
     }
 
     fun addTab() {
@@ -1190,7 +1253,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
                 tab.url = url
             }
             if (tabByTitleIndex(vb.vTabs.current) == tab) {
-                vb.vActionBar.setAddressBoxText(tab.url)
+                setAddressBoxText(tab.url)
             }
             tab.blockedAds = 0
             tab.blockedPopups = 0
@@ -1209,7 +1272,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
                 tab.url = url
             }
             if (tabByTitleIndex(vb.vTabs.current) == tab) {
-                vb.vActionBar.setAddressBoxText(tab.url)
+                setAddressBoxText(tab.url)
             }
 
             //thumbnail
@@ -1226,7 +1289,7 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
 
         override fun onPageCertificateError(url: String?) {
-            vb.vActionBar.setAddressBoxTextColor(Color.RED)
+            setAddressBoxTextColor(Color.RED)
         }
 
         override fun isAd(url: Uri, acceptHeader: String?, baseUri: Uri): Boolean? {
@@ -1343,7 +1406,17 @@ open class MainActivity : AppCompatActivity(), ActionBar.Callback {
         }
 
         override fun initiateVoiceSearch() {
-            this@MainActivity.initiateVoiceSearch()
+            hideMenuOverlay()
+            voiceSearchHelper.initiateVoiceSearch(object : VoiceSearchHelper.Callback {
+                override fun onResult(text: String?) {
+                    if (text == null) {
+                        Utils.showToast(this@MainActivity, getString(R.string.can_not_recognize))
+                        return
+                    }
+                    search(text)
+                    hideMenuOverlay()
+                }
+            })
         }
 
         override fun onEditHomePageBookmarkSelected(index: Int) {

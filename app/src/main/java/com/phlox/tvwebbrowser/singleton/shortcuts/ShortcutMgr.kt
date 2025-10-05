@@ -74,10 +74,6 @@ class ShortcutMgr private constructor() {
                 mainActivity.refresh()
                 return true
             }
-            Shortcut.VOICE_SEARCH -> {
-                mainActivity.initiateVoiceSearch()
-                return true
-            }
         }
     }
 

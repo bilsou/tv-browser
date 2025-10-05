@@ -108,6 +108,10 @@
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity android:name=".activity.tabs.TabsActivity"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity android:name=".activity.IncognitoModeMainActivity"
             android:process=":incognito"
             android:exported="false"

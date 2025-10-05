@@ -383,7 +383,7 @@ class CursorLayout : FrameLayout {
             val dTime = newTime - lastCursorUpdate
             lastCursorUpdate = newTime
 
-            val accelerationFactor = 800f * dTime
+            val accelerationFactor = 1000f * dTime
             //float decelerationFactor = 1 - Math.min(0.5f, 0.005f * dTime);
             cursorSpeed.set(bound(cursorSpeed.x/* * decelerationFactor*/ + bound(cursorDirection.x.toFloat(), 1f) * accelerationFactor, maxCursorSpeed),
                     bound(cursorSpeed.y/* * decelerationFactor*/ + bound(cursorDirection.y.toFloat(), 1f) * accelerationFactor, maxCursorSpeed))

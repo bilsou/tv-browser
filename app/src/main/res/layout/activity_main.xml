@@ -32,20 +32,13 @@
         android:clipChildren="false"
         android:clipToPadding="false">
 
-        <com.phlox.tvwebbrowser.activity.main.view.ActionBar
-            android:id="@+id/vActionBar"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
         <com.phlox.tvwebbrowser.activity.main.view.tabs.TabsView
             android:id="@+id/vTabs"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:layout_below="@+id/vActionBar"
             android:layout_marginTop="10dp"
             android:focusable="true"
-            android:nextFocusUp="@+id/ibMenu"
+            android:visibility="gone"
             android:nextFocusDown="@+id/ibCloseTab"
             />
     </RelativeLayout>
@@ -110,6 +103,7 @@
             android:contentDescription="@string/navigate_back"
             android:src="@drawable/back_icon_selector"
             android:layout_margin="3dp"
+            android:nextFocusLeft="@+id/btnTab"
             android:nextFocusRight="@+id/ibForward"
             android:nextFocusUp="@+id/vTabs"
             android:focusable="true"
@@ -219,6 +213,7 @@
             android:layout_marginBottom="3dp"
             android:layout_marginEnd="3dp"
             android:nextFocusLeft="@+id/ibHome"
+            android:nextFocusRight="@+id/ibBack"
             android:nextFocusUp="@+id/vTabs"
             android:focusable="true"
             app:layout_constraintEnd_toEndOf="parent"

@@ -4,7 +4,7 @@
     <string name="error">Error</string>
     <string name="ok">OK</string>
     <string name="loading">Loading&#8230;</string>
-    <string name="url_prompt">Input query text or URL</string>
+    <string name="url_prompt">Search or dictate URL</string>
     <string name="can_not_recognize">Can not recognize</string>
     <string name="speak">Search query</string>
     <string name="open_new_tab">Open new Tab</string>
