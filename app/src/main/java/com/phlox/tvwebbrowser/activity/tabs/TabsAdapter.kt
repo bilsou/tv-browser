@@ -15,7 +15,8 @@ import kotlinx.coroutines.withContext
 class TabsAdapter(
     private val tabStates: List<TabInfo>,
     private val currentTabIndex: Int,
-    private val onTabSelected: (Int) -> Unit
+    private val onTabSelected: (Int) -> Unit,
+    private val onTabClosed: (Int) -> Unit
 ) : RecyclerView.Adapter<TabsAdapter.TabViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TabViewHolder {
@@ -36,6 +37,13 @@ class TabsAdapter(
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onTabSelected(position)
+                }
+            }
+            
+            binding.ibCloseTab.setOnClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onTabClosed(position)
                 }
             }
         }

@@ -66,8 +66,20 @@
         android:textSize="10sp"
         android:textStyle="bold"
         android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/ibCloseTab"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
+
+    <ImageButton
+        android:id="@+id/ibCloseTab"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="@drawable/button_bg_selector"
+        android:contentDescription="Close Tab"
+        android:src="@drawable/ic_close_grey_900_24dp"
+        android:focusable="true"
+        android:padding="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

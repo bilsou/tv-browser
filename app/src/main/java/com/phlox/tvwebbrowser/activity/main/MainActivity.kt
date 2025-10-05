@@ -144,7 +144,6 @@ open class MainActivity : AppCompatActivity() {
             }
         }
         vb.ibRefresh.setOnClickListener { refresh() }
-        vb.ibCloseTab.setOnClickListener { tabsModel.currentTab.value?.apply { closeTab(this) } }
 
         // Add button click listener for the new Tab button
         vb.btnTab.setOnClickListener { showTabsActivity() }
@@ -657,9 +656,15 @@ open class MainActivity : AppCompatActivity() {
             }
             REQUEST_CODE_TABS_ACTIVITY -> if (resultCode == Activity.RESULT_OK) {
                 val addNewTab = data?.getBooleanExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_ADD_NEW_TAB, false) ?: false
+                val closedTabIndex = data?.getIntExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_CLOSED_TAB_INDEX, -1) ?: -1
+                
                 if (addNewTab) {
                     // Add new tab
                     addTab()
+                } else if (closedTabIndex >= 0 && closedTabIndex < tabsModel.tabsStates.size) {
+                    // Close tab at index
+                    val tabToClose = tabsModel.tabsStates[closedTabIndex]
+                    closeTab(tabToClose)
                 } else {
                     val selectedTabIndex = data?.getIntExtra(com.phlox.tvwebbrowser.activity.tabs.TabsActivity.EXTRA_SELECTED_TAB_INDEX, -1) ?: -1
                     if (selectedTabIndex >= 0 && selectedTabIndex < tabsModel.tabsStates.size) {

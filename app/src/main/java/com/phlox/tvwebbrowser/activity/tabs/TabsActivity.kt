@@ -15,6 +15,7 @@ class TabsActivity : AppCompatActivity() {
         const val EXTRA_CURRENT_TAB_INDEX = "current_tab_index"
         const val EXTRA_TAB_STATES = "tab_states"
         const val EXTRA_ADD_NEW_TAB = "add_new_tab"
+        const val EXTRA_CLOSED_TAB_INDEX = "closed_tab_index"
     }
 
     private lateinit var vb: ActivityTabsBinding
@@ -47,14 +48,24 @@ class TabsActivity : AppCompatActivity() {
     private fun setupRecyclerView(tabStates: ArrayList<TabInfo>) {
         vb.rvTabs.layoutManager = LinearLayoutManager(this)
         
-        tabsAdapter = TabsAdapter(tabStates, currentTabIndex) { tabIndex ->
-            // Return selected tab index
-            val resultIntent = Intent().apply {
-                putExtra(EXTRA_SELECTED_TAB_INDEX, tabIndex)
+        tabsAdapter = TabsAdapter(tabStates, currentTabIndex, 
+            onTabSelected = { tabIndex ->
+                // Return selected tab index
+                val resultIntent = Intent().apply {
+                    putExtra(EXTRA_SELECTED_TAB_INDEX, tabIndex)
+                }
+                setResult(RESULT_OK, resultIntent)
+                finish()
+            },
+            onTabClosed = { tabIndex ->
+                // Return closed tab index
+                val resultIntent = Intent().apply {
+                    putExtra(EXTRA_CLOSED_TAB_INDEX, tabIndex)
+                }
+                setResult(RESULT_OK, resultIntent)
+                finish()
             }
-            setResult(RESULT_OK, resultIntent)
-            finish()
-        }
+        )
         
         vb.rvTabs.adapter = tabsAdapter
 
